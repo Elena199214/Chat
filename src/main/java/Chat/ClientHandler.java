@@ -5,6 +5,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -76,9 +77,26 @@ public class ClientHandler {
 
                 server.broadcastMessageToClients(messageFromClient,nicknames);
             }
-            else if (messageFromClient.startsWith(ChatConstants.CLIENTS_LIST)) {
-                server.broadcastClients();
-            } else {
+            else if (messageFromClient.startsWith(ChatConstants.CHANGE_NICK)) {
+                // получить новый ник
+                String[] messageList = messageFromClient.split("\\s+");
+                String newNick = messageList[1];
+
+                // проверить, что данный ник можно использовать
+                String messageFull;
+                if(server.getAuthService().isNickFree(newNick)) {
+                    String temp = name;
+                    server.getAuthService().updateNick(newNick, name);
+                    name = newNick;
+                    messageFull = temp + " сменил ник на " + name;
+                    server.broadcastMessage(messageFull); // отправить всем авторизованным пользователем, сообщение о смене ника пользователя
+                } else {
+                    messageFull = "Данный ник занят";
+                    server.broadcastMessageToClients(messageFull, Collections.singletonList(this.name));
+                }
+            }
+
+            else {
                 server.broadcastMessage("[" + name + "]: " + messageFromClient);
             }
         }
