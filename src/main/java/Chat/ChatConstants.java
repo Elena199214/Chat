@@ -4,7 +4,7 @@ public class ChatConstants {
 
     public static final String HOST = "localhost";
 
-    public static final int PORT = 8186;
+    public static final int PORT = 8182;
 
     public static final String AUTH_COMMAND = "/auth";
 
@@ -17,4 +17,6 @@ public class ChatConstants {
     public static final String CLIENTS_LIST = "/clients";
 
     public static final String SEND_TO_ONE_CLIENT = "/w";
+
+    public static final String CHANGE_NICK = "/change";
 }
