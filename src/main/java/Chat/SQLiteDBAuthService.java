@@ -24,14 +24,13 @@ public class SQLiteDBAuthService implements AuthService {
 
     // создать таблицу, если ее нет
     public void createTable() {
-        String sqlCommand = "CREATE TABLE IF NOT EXISTS users (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL," +
-                "nick VARCHAR UNIQUE NOT NULL, " +
-                "login TEXT UNIQUE NOT NULL" +
-                "pass TEXT NOT NULL" +
-                ")";
         try {
-            statement.executeUpdate(sqlCommand);
+            statement.executeUpdate("create table if not exists user (\n" +
+                    "    id integer primary key autoincrement not null,\n" +
+                    "    nick varchar unique not null,\n" +
+                    "    login text unique not null,\n" +
+                    "    pass TEXT NOT NULL\n" +
+                    ");");
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
@@ -40,8 +39,7 @@ public class SQLiteDBAuthService implements AuthService {
     // проверить, что таблица пустая
     public boolean tableIsEmpty() {
         boolean result = false;
-        String sqlCommand = "SELECT * FROM chat.users;";
-        try (ResultSet resultSet = statement.executeQuery(sqlCommand)) {
+        try (ResultSet resultSet = statement.executeQuery("SELECT * FROM user;")) {
             result = resultSet.next();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -53,12 +51,10 @@ public class SQLiteDBAuthService implements AuthService {
     // заполнить таблицу
     public void insertTable() {
         if (tableIsEmpty()) {
-            String sqlCommand =
-                    "INSERT INTO users (nick, login, pass) VALUES ('nick1', 'login1', 'pass1'), " +
-                            "('nick2', 'login2', 'pass2'), " +
-                            "('nick3', 'login3', 'pass3');";
             try {
-                statement.executeUpdate(sqlCommand);
+                statement.executeUpdate("INSERT INTO user (nick, login, pass) VALUES ('nick1', 'login1', 'pass1'), " +
+                        "('nick2', 'login2', 'pass2'), " +
+                        "('nick3', 'login3', 'pass3');");
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
@@ -86,9 +82,8 @@ public class SQLiteDBAuthService implements AuthService {
     @Override
     public String getNickByLoginPass(String login, String pass) {
         String nick = null;
-        String sqlCommand = "SELECT nick FROM users WHERE login = '" + login + "' AND pass ='" + pass + "';";
         try {
-            ResultSet resultSet = statement.executeQuery(sqlCommand);
+            ResultSet resultSet = statement.executeQuery("SELECT nick FROM user WHERE login = '" + login + "' AND pass ='" + pass + "';");
             while(resultSet.next()){
                 nick = resultSet.getString(1);
             }
@@ -102,8 +97,7 @@ public class SQLiteDBAuthService implements AuthService {
     @Override
     public boolean isNickFree(String nick) {
         boolean result = false;
-        String sqlCommand = "SELECT nick FROM users WHERE nick = '" + nick + "';";
-        try (ResultSet resultSet = statement.executeQuery(sqlCommand)) {
+        try (ResultSet resultSet = statement.executeQuery("SELECT nick FROM user WHERE nick = '" + nick + "';")) {
             result = resultSet.next();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -114,9 +108,8 @@ public class SQLiteDBAuthService implements AuthService {
     // получить id пользователя
     public int getIdUsers(String nick) {
         int id = 0;
-        String sqlCommand = "SELECT id FROM users where nick = '" + nick + "';";
         try {
-            ResultSet resultSet = statement.executeQuery(sqlCommand);
+            ResultSet resultSet = statement.executeQuery("SELECT id FROM user where nick = '" + nick + "';");
             while(resultSet.next()){
                 id = resultSet.getInt(1);
             }
@@ -130,9 +123,8 @@ public class SQLiteDBAuthService implements AuthService {
     @Override
     public void updateNick(String newNick, String nick) {
         int id = getIdUsers(nick);
-        String sqlCommand = "UPDATE users SET nick = '" + newNick + "' WHERE (id = '" + id + "')";
         try {
-            statement.executeUpdate(sqlCommand);
+            statement.executeUpdate("UPDATE user SET nick = '" + newNick + "' WHERE (id = '" + id + "')");
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }

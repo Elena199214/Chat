@@ -5,8 +5,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -29,7 +32,11 @@ public class ClientHandler {
             this.inputStream = new DataInputStream(socket.getInputStream());
             this.outputStream = new DataOutputStream(socket.getOutputStream());
             this.name = "";
-            new Thread(() -> {
+
+
+            //new Thread(() -> {
+            ExecutorService service = Executors.newFixedThreadPool(2);
+            service.submit(() -> {
                 try {
                     authentification();
                     readMessages();
@@ -38,10 +45,10 @@ public class ClientHandler {
                 } finally {
                     closeConnection();
                 }
-            }).start();
+            });
 
             // убить через 120 сек, если не авторизовался
-            Thread killThread = new Thread(() -> {
+            service.submit(() -> {
                 try{
                     TimeUnit.SECONDS.sleep(120);
                 } catch (InterruptedException e) {
@@ -55,7 +62,7 @@ public class ClientHandler {
                     }
                 }
             });
-            killThread.start();
+            service.shutdown();
 
         } catch (IOException ex) {
             System.out.println("Проблема при создании клиента");
@@ -76,9 +83,26 @@ public class ClientHandler {
 
                 server.broadcastMessageToClients(messageFromClient,nicknames);
             }
-            else if (messageFromClient.startsWith(ChatConstants.CLIENTS_LIST)) {
-                server.broadcastClients();
-            } else {
+            else if (messageFromClient.startsWith(ChatConstants.CHANGE_NICK)) {
+                // получить новый ник
+                String[] messageList = messageFromClient.split("\\s+");
+                String newNick = messageList[1];
+
+                // проверить, что данный ник можно использовать
+                String messageFull;
+                if(server.getAuthService().isNickFree(newNick)) {
+                    String temp = name;
+                    server.getAuthService().updateNick(newNick, name);
+                    name = newNick;
+                    messageFull = temp + " сменил ник на " + name;
+                    server.broadcastMessage(messageFull); // отправить всем авторизованным пользователем, сообщение о смене ника пользователя
+                } else {
+                    messageFull = "Данный ник занят";
+                    server.broadcastMessageToClients(messageFull, Collections.singletonList(this.name));
+                }
+            }
+
+            else {
                 server.broadcastMessage("[" + name + "]: " + messageFromClient);
             }
         }
