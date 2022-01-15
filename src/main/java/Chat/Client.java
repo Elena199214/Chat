@@ -4,22 +4,32 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class Client extends JFrame {
 
-    private Socket socket;
+    private Socket socket; //соединение с сервером
 
-    private JTextArea chatArea;
+    private JTextArea chatArea; //текстовое поле для вывода сообщений
 
-    private JTextField inputField;
+    private JTextField inputField; // текстовое поле для ввода сообщений
 
-    private DataInputStream inputStream;
-    private DataOutputStream outputStream;
+    private DataInputStream inputStream; //поток ввода
+    private DataOutputStream outputStream;  //поток вывода
+
+    private DataOutputStream fileOutputStream; // поток для записи в файл
+    private DataInputStream fileInputStream;
+    private String nameFile;
+    private File file;
+
+    public String getNameFile() {
+        return nameFile;
+    }
 
     public Client() {
         try {
@@ -29,26 +39,52 @@ public class Client extends JFrame {
         }
         initGUI();
     }
-
+    //открытие соединения
     private void openConnection() throws IOException {
-        socket = new Socket(ChatConstants.HOST, ChatConstants.PORT);
-        inputStream = new DataInputStream(socket.getInputStream());
-        outputStream = new DataOutputStream(socket.getOutputStream());
+        socket = new Socket(ChatConstants.HOST, ChatConstants.PORT); //открытие сокета
+        inputStream = new DataInputStream(socket.getInputStream()); //доступ к исходящему потоку сервера
+        outputStream = new DataOutputStream(socket.getOutputStream()); //доступ к входящему потоку сервера
 
+        //входящие сообщения
         new Thread(() -> {
             try {
                 //auth
                 while (true) {
                     String strFromServer = inputStream.readUTF();
-                    if (strFromServer.equals(ChatConstants.AUTH_OK)) {
+                    chatArea.append(strFromServer + "\n");
+                    if (strFromServer.startsWith(ChatConstants.AUTH_OK)) {
                         break;
                     }
-                    chatArea.append(strFromServer);
-                    chatArea.append("\n");
                 }
-                //read
+
+                // сообщение nick вошел в чат
                 while (true) {
                     String strFromServer = inputStream.readUTF();
+                    chatArea.append(strFromServer + "\n");
+                    if (strFromServer.endsWith("вошел в чат")) {
+                        // создать файл
+                        String[] messageFull = strFromServer.split("\\s+");
+                        nameFile = "history_" + messageFull[0] + ".txt";
+                        file = new File(getNameFile());
+                        if (!file.exists()) {
+                            file.createNewFile();
+                        }
+                        // добавить историю в чат
+                        chatArea.append("Начало истории чата: \n");
+                        chatArea.append(sendHistory());
+                        chatArea.append("Конец истории чата.\n");
+                        chatArea.append("\n");
+                        break;
+                    }
+                }
+
+
+                //read
+                fileOutputStream = new DataOutputStream(new FileOutputStream(getNameFile(), true));
+                saveHistory(LocalDateTime.now().toString());
+                while (true) {
+                    String strFromServer = inputStream.readUTF();
+                    saveHistory(strFromServer);
                     if (strFromServer.equals(ChatConstants.STOP_WORD)) {
                         break;
                     } else if (strFromServer.startsWith(ChatConstants.CLIENTS_LIST)) {
@@ -63,6 +99,43 @@ public class Client extends JFrame {
                 Runtime.getRuntime().exit(0);
             }
         }).start();
+    }
+
+    private void saveHistory(String text) throws IOException {
+        fileOutputStream.writeUTF(text + "\n");
+    }
+
+    public String sendHistory() {
+        List<String> list = new ArrayList<>();
+        StringBuilder text = new StringBuilder();
+        try {
+            fileInputStream = new DataInputStream(new FileInputStream(getNameFile()));
+            String line;
+            while(fileInputStream.available()>0) {
+                line = fileInputStream.readUTF();
+                list.add(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            fileInputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // поставить условие, если list.size() >= 100
+        if(list.size() >= 100) {
+            for(int i = list.size() - 100; i < list.size(); i++) {
+                text.append(list.get(i));
+            }
+        } else {
+            for (String s : list) {
+                text.append(s);
+            }
+        }
+        return text.toString();
     }
 
     public void closeConnection() {
