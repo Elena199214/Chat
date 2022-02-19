@@ -1,4 +1,7 @@
 package Chat;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -6,10 +9,15 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+
+
 /**
  * Непосредственно сервер
  */
 public class MyServer {
+
+    private static final Logger LOGGER = LogManager.getLogger(MyServer.class);
     private List<ClientHandler> clients;
     private AuthService authService;
     public MyServer() {
@@ -18,13 +26,14 @@ public class MyServer {
             authService.start();
             clients = new ArrayList<>();
             while (true) {
-                System.out.println("Сервер ожидает подключения");
+                LOGGER.info("Сервер ожидает подключения");
                 Socket socket = server.accept();
-                System.out.println("Клиент подключился");
+                LOGGER.info("Клиент подключился");
                 new ClientHandler(this, socket);
             }
         } catch (IOException | SQLException e) {
             e.printStackTrace();
+            LOGGER.error("[ОШИБКА]: " + e); // вот тут же правильно что LOGGER.error? Или нужно было LOGGER.info?
         } finally {
             if (authService != null) {
                 authService.stop();
@@ -81,5 +90,7 @@ public class MyServer {
                         .collect(Collectors.joining(" "));
         // /client nick1 nick2 nick3
         clients.forEach(c-> c.sendMsg(clientsMessage));
+
     }
+
 }
